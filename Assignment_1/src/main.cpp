@@ -16,15 +16,15 @@ const std::string root_path = DATA_DIR;
 // Computes the determinant of the matrix whose columns are the vector u and v
 double inline det(const Vector2d &u, const Vector2d &v)
 {
-    // TODO
-    return 0;
+    return u.x() * v.y() - u.y() * v.x();
 }
 
 // Return true iff [a,b] intersects [c,d]
 bool intersect_segment(const Vector2d &a, const Vector2d &b, const Vector2d &c, const Vector2d &d)
 {
     // TODO
-    return true;
+    return (det(b - a, c - a) * det(b - a, d - a) < 0 &&
+            det(d - c, a - c) * det(d - c, b - c) < 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -33,10 +33,23 @@ bool is_inside(const std::vector<Vector2d> &poly, const Vector2d &query)
 {
     // 1. Compute bounding box and set coordinate of a point outside the polygon
     // TODO
-    Vector2d outside(0, 0);
+    Vector2d outside(std::numeric_limits<double>::min(), std::numeric_limits<double>::min());
+    for (auto point : poly)
+    {
+        outside.x() = std::max(outside.x(), point.x());
+        outside.y() = std::max(outside.y(), point.y());
+    }
+    outside.x() += 1; outside.y() -= 1;
     // 2. Cast a ray from the query point to the 'outside' point, count number of intersections
-    // TODO
-    return true;
+    int intersection = 0;
+    for (int i = 0; i < poly.size(); ++i)
+    {
+        if (intersect_segment(query, outside, poly[i], poly[(i + 1) % poly.size()]))
+        {
+            intersection++;
+        }
+    }
+    return intersection % 2 == 1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,13 +58,28 @@ std::vector<Vector2d> load_xyz(const std::string &filename)
 {
     std::vector<Vector2d> points;
     std::ifstream in(filename);
-    // TODO
+
+    double x; double y; double z;
+    std::string line;
+
+    while (getline(in, line)) {
+        in >> x >> y >> z;
+        points.push_back(Vector2d(x, y));
+    }
+
+    in.close();
     return points;
 }
 
 void save_xyz(const std::string &filename, const std::vector<Vector2d> &points)
 {
-    // TODO
+    std::ofstream out(filename);
+    out << points.size() << std::endl;
+    for (size_t i = 0; i < points.size(); ++i)
+    {
+        out << points[i].x() << " " << points[i].y() << " 0" << std::endl;
+    }
+    out.close();
 }
 
 std::vector<Vector2d> load_obj(const std::string &filename)
