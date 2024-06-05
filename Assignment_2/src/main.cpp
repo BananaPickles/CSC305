@@ -6,6 +6,7 @@
 // Utilities for the Assignment
 #include "utils.h"
 
+
 // Image writing library
 #define STB_IMAGE_WRITE_IMPLEMENTATION // Do not include this line twice in your project!
 #include "stb_image_write.h"
@@ -132,6 +133,28 @@ void raytrace_parallelogram()
 
     // Save to png
     write_matrix_to_png(C, C, C, A, filename);
+}
+
+bool ray_parallelogram_intersection(const Vector3d &ray_origin, const Vector3d &ray_direction,
+                                    const Vector3d &origin, const Vector3d &u, const Vector3d &v,
+                                    Vector3d &ray_intersection)
+{
+    // Textbook pg.88
+    Vector3d a = origin;
+    Vector3d b = origin + u;
+    Vector3d c = origin + v;
+    Vector3d d = origin + u + v;
+
+    double t = (a - ray_origin).dot(u.cross(v)) / ray_direction.dot(u.cross(v));
+    double
+    if (t < 0)
+    {
+        return false;
+    }
+
+
+
+    return true;
 }
 
 void raytrace_perspective()
@@ -265,9 +288,9 @@ void raytrace_shading()
 int main()
 {
     raytrace_sphere();
-    raytrace_parallelogram();
-    raytrace_perspective();
-    raytrace_shading();
+//    raytrace_parallelogram();
+//    raytrace_perspective();
+//    raytrace_shading();
 
     return 0;
 }

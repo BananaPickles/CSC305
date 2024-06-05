@@ -4,6 +4,7 @@
 #include "stb_image_write.h"
 #include <Eigen/Dense>
 #include <algorithm>
+#include <cstdint>
 #include <vector>
 
 unsigned char double_to_unsignedchar(const double d) {
