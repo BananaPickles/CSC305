@@ -75,6 +75,39 @@ void raytrace_sphere()
     write_matrix_to_png(C, C, C, A, filename);
 }
 
+bool ray_parallelogram_intersection(const Vector3d &ray_origin, const Vector3d &ray_direction,
+                                    const Vector3d &origin, const Vector3d &u, const Vector3d &v,
+                                    double &t)
+{
+    // Textbook pg.88
+    double beta;
+    double gamma;
+    Matrix3d t_matrix;
+    Matrix3d beta_matrix;
+    Matrix3d gamma_matrix;
+    Matrix3d m_matrix;
+    m_matrix << origin - u, origin - v, ray_direction;
+    t_matrix.col(0) = origin - u; t_matrix.col(1) = origin - v; t_matrix.col(2) = origin - ray_origin;
+    gamma_matrix.col(0) = origin - u; gamma_matrix.col(1) = origin - ray_origin; gamma_matrix.col(2) = ray_direction;
+    beta_matrix.col(0) = origin - ray_origin; beta_matrix.col(1) = origin - v; beta_matrix.col(2) = ray_direction;
+
+    t = (t_matrix.determinant() / m_matrix.determinant());
+    if (t < 0) {
+        return false;
+        std::cout << "t: " << t << " beta: " << beta << " gamma: " << gamma << std::endl;
+    }
+    gamma = gamma_matrix.determinant() / m_matrix.determinant();
+    if (gamma < 0 || gamma > 1) {
+        return false;
+    }
+    beta = beta_matrix.determinant() / m_matrix.determinant();
+    if (beta < 0 || beta > 1) {
+        return false;
+    }
+
+    return true;
+}
+
 void raytrace_parallelogram()
 {
     std::cout << "Simple ray tracer, one parallelogram with orthographic projection" << std::endl;
@@ -96,6 +129,8 @@ void raytrace_parallelogram()
     const Vector3d pgram_u(0, 0.7, -10);
     const Vector3d pgram_v(1, 0.4, 0);
 
+    double t_intersection;
+
     // Single light source
     const Vector3d light_position(-1, 1, 1);
 
@@ -109,12 +144,13 @@ void raytrace_parallelogram()
             const Vector3d ray_origin = pixel_center;
             const Vector3d ray_direction = camera_view_direction;
 
-            // TODO: Check if the ray intersects with the parallelogram
-            if (true)
+             // TODO: Check if the ray intersects with the parallelogram
+            if (ray_parallelogram_intersection(ray_origin, ray_direction, pgram_origin, pgram_u, pgram_v, t_intersection))
             {
+
                 // TODO: The ray hit the parallelogram, compute the exact intersection
                 // point
-                Vector3d ray_intersection(0, 0, 0);
+                Vector3d ray_intersection = ray_origin + t_intersection * ray_direction;
 
                 // TODO: Compute normal at the intersection point
                 Vector3d ray_normal = ray_intersection.normalized();
@@ -135,27 +171,6 @@ void raytrace_parallelogram()
     write_matrix_to_png(C, C, C, A, filename);
 }
 
-bool ray_parallelogram_intersection(const Vector3d &ray_origin, const Vector3d &ray_direction,
-                                    const Vector3d &origin, const Vector3d &u, const Vector3d &v,
-                                    Vector3d &ray_intersection)
-{
-    // Textbook pg.88
-    Vector3d a = origin;
-    Vector3d b = origin + u;
-    Vector3d c = origin + v;
-    Vector3d d = origin + u + v;
-
-    double t = (a - ray_origin).dot(u.cross(v)) / ray_direction.dot(u.cross(v));
-    double
-    if (t < 0)
-    {
-        return false;
-    }
-
-
-
-    return true;
-}
 
 void raytrace_perspective()
 {
@@ -287,8 +302,8 @@ void raytrace_shading()
 
 int main()
 {
-    raytrace_sphere();
-//    raytrace_parallelogram();
+//    raytrace_sphere();
+    raytrace_parallelogram();
 //    raytrace_perspective();
 //    raytrace_shading();
 
