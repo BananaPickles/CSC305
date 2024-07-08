@@ -25,7 +25,7 @@ const std::string filename("raytrace.png");
 const double focal_length = 10;
 const double field_of_view = 0.7854; //45 degrees
 const double image_z = 5;
-const bool is_perspective = false;
+const bool is_perspective = true;
 const Vector3d camera_position(0, 0, 5);
 const double camera_aperture = 0.05;
 
@@ -194,50 +194,51 @@ Vector4d procedural_texture(const double tu, const double tv)
 //Compute the intersection between a ray and a sphere, return -1 if no intersection
 double ray_sphere_intersection(const Vector3d &ray_origin, const Vector3d &ray_direction, int index, Vector3d &p, Vector3d &N)
 {
-    // TODO, implement the intersection between the ray and the sphere at index index.
-    //return t or -1 if no intersection
-
     const Vector3d sphere_center = sphere_centers[index];
     const double sphere_radius = sphere_radii[index];
 
+    Vector3d origin = ray_origin - sphere_center;
+    double a = ray_direction.dot(ray_direction);
+    double b = 2 * ray_direction.dot(origin);
+    double c = origin.dot(origin) - sphere_radius * sphere_radius;
+    double discriminant = b * b - 4 * a * c;
+
     double t = -1;
-
-    if (false)
+    if (discriminant >= 0)
     {
-        return -1;
+        t = (-b - sqrt(discriminant)) / (2 * a);
+        p = ray_origin + t * ray_direction;
+        N = (p - sphere_center).normalized();
     }
-    else
-    {
-        //TODO set the correct intersection point, update p to the correct value
-        p = ray_origin;
-        N = ray_direction;
+    return t;
 
-        return t;
-    }
-
-    return -1;
 }
 
-//Compute the intersection between a ray and a paralleogram, return -1 if no intersection
+//Compute the intersection between a ray and a parallelogram, return -1 if no intersection
 double ray_parallelogram_intersection(const Vector3d &ray_origin, const Vector3d &ray_direction, int index, Vector3d &p, Vector3d &N)
 {
-    // TODO, implement the intersection between the ray and the parallelogram at index index.
-    //return t or -1 if no intersection
-
     const Vector3d pgram_origin = parallelograms[index].col(0);
     const Vector3d A = parallelograms[index].col(1);
     const Vector3d B = parallelograms[index].col(2);
     const Vector3d pgram_u = A - pgram_origin;
     const Vector3d pgram_v = B - pgram_origin;
 
-    if (false)
-    {
-        return -1;
-    }
+    Matrix3d m_matrix;
+    Vector3d b_vector = ray_origin - pgram_origin;
+    m_matrix << pgram_u, pgram_v, -ray_direction;
 
-    //TODO set the correct intersection point, update p and N to the correct values
-    p = ray_origin;
-    N = p.normalized();
+    Vector3d intersection = m_matrix.inverse() * b_vector;
+
+    double u = intersection(0);
+    double v = intersection(1);
+    double t = intersection(2);
+
+    if (t > 0 && u >= 0 && u <= 1 && v >= 0 && v <= 1)
+    {
+        p = ray_origin + t * ray_direction;
+        N = -(pgram_u.cross(pgram_v).normalized());
+        return t;
+    }
 
     return -1;
 }
@@ -298,9 +299,10 @@ int find_nearest_object(const Vector3d &ray_origin, const Vector3d &ray_directio
 //Checks if the light is visible
 bool is_light_visible(const Vector3d &ray_origin, const Vector3d &ray_direction, const Vector3d &light_position)
 {
-    // TODO: Determine if the light is visible here
-    // Use find_nearest_object
-    return true;
+    Vector3d p, N;
+    const int nearest_object = find_nearest_object(ray_origin, ray_direction, p, N);
+    if (nearest_object < 0) return true;
+    return false;
 }
 
 Vector4d shoot_ray(const Vector3d &ray_origin, const Vector3d &ray_direction, int max_bounce)
@@ -328,8 +330,10 @@ Vector4d shoot_ray(const Vector3d &ray_origin, const Vector3d &ray_direction, in
 
         const Vector3d Li = (light_position - p).normalized();
 
-        // TODO: Shoot a shadow ray to determine if the light should affect the intersection point and call is_light_visible
-
+        if (!is_light_visible(p + 1e-5 * Li, Li, light_position))
+        {
+            continue;
+        }
         Vector4d diff_color = obj_diffuse_color;
 
         if (nearest_object == 4)
@@ -349,13 +353,12 @@ Vector4d shoot_ray(const Vector3d &ray_origin, const Vector3d &ray_direction, in
             diff_color = procedural_texture(tu, tv);
         }
 
-        // TODO: Add shading parameters
-
         // Diffuse contribution
         const Vector4d diffuse = diff_color * std::max(Li.dot(N), 0.0);
 
         // Specular contribution, use obj_specular_color
-        const Vector4d specular(0, 0, 0, 0);
+        Vector3d h = Li + (camera_position-p).normalized();
+        const Vector4d specular = obj_specular_color * pow(std::max(0., h.normalized().dot(N)), obj_specular_exponent);
 
         // Attenuate lights according to the squared distance to the lights
         const Vector3d D = light_position - p;
@@ -369,7 +372,8 @@ Vector4d shoot_ray(const Vector3d &ray_origin, const Vector3d &ray_direction, in
     }
     // TODO: Compute the color of the reflected ray and add its contribution to the current point color.
     // use refl_color
-    Vector4d reflection_color(0, 0, 0, 0);
+
+    Vector4d reflection_color =
 
     // TODO: Compute the color of the refracted ray and add its contribution to the current point color.
     //       Make sure to check for total internal reflection before shooting a new ray.
@@ -401,8 +405,8 @@ void raytrace_scene()
     // The sensor grid is at a distance 'focal_length' from the camera center,
     // and covers an viewing angle given by 'field_of_view'.
     double aspect_ratio = double(w) / double(h);
-    double image_y = 1; //TODO: compute the correct pixels size
-    double image_x = 1; //TODO: compute the correct pixels size
+    double image_y = focal_length * tan(field_of_view / 2);
+    double image_x = image_y * aspect_ratio;
 
     // The pixel grid through which we shoot rays is at a distance 'focal_length'
     const Vector3d image_origin(-image_x, image_y, -image_z);
@@ -422,7 +426,9 @@ void raytrace_scene()
 
             if (is_perspective)
             {
-                // TODO: Perspective camera
+                // Perspective camera
+                ray_origin = camera_position;
+                ray_direction = (pixel_center - camera_position);
             }
             else
             {
