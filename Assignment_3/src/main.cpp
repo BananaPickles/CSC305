@@ -130,25 +130,30 @@ double lerp(double a0, double a1, double w)
 {
     assert(w >= 0);
     assert(w <= 1);
-    //TODO implement linear and cubic interpolation
-    return 0;
+
+    // linear interpolation
+    return a0 + w * (a1 - a0);
+
+    // cubic interpolation
+//    return (a1 - a0) * (3.0 - w * 2.0) * w * w + a0;
 }
 
 // Computes the dot product of the distance and gradient vectors.
 double dotGridGradient(int ix, int iy, double x, double y)
 {
-    //TODO: Compute the distance vector
-    //TODO: Compute and return the dot-product
-    return 0;
+    double dx = x - ix;
+    double dy = y - iy;
+
+    return (dx * grid[iy][ix][0] + dy * grid[iy][ix][1]);
 }
 
 // Compute Perlin noise at coordinates x, y
 double perlin(double x, double y)
 {
-    //TODO: Determine grid cell coordinates x0, y0
-    int x0 = 0;
+    // Determine grid cell coordinates
+    int x0 = int(x);
     int x1 = x0 + 1;
-    int y0 = 0;
+    int y0 = int(y);
     int y1 = y0 + 1;
 
     // Determine interpolation weights
@@ -178,13 +183,13 @@ Vector4d procedural_texture(const double tu, const double tv)
     assert(tu <= 1);
     assert(tv <= 1);
 
-    //TODO: uncomment these lines once you implement the perlin noise
-    // const double color = (perlin(tu * grid_size, tv * grid_size) + 1) / 2;
-    // return Vector4d(0, color, 0, 0);
+    //uncomment these lines once you implement the perlin noise
+    const double color = (perlin(tu * grid_size, tv * grid_size) + 1) / 2;
+    return Vector4d(0, color, 0, 0);
 
     //Example fo checkerboard texture
-    const double color = (int(tu * grid_size) + int(tv * grid_size)) % 2 == 0 ? 0 : 1;
-    return Vector4d(0, color, 0, 0);
+//    const double color = (int(tu * grid_size) + int(tv * grid_size)) % 2 == 0 ? 0 : 1;
+//    return Vector4d(0, color, 0, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -370,10 +375,17 @@ Vector4d shoot_ray(const Vector3d &ray_origin, const Vector3d &ray_direction, in
     {
         refl_color = Vector4d(0.5, 0.5, 0.5, 0);
     }
-    // TODO: Compute the color of the reflected ray and add its contribution to the current point color.
-    // use refl_color
 
-    Vector4d reflection_color =
+    // use refl_color
+    Vector4d reflection_color;
+    if (max_bounce >= 0)
+    {
+        Vector3d reflection_direction = ray_direction - 2 * ray_direction.dot(N) * N;
+        reflection_color = refl_color.cwiseProduct(shoot_ray(p + 1e-5 * reflection_direction, reflection_direction, max_bounce - 1));
+    } else {
+        reflection_color = Vector4d(0, 0, 0, 0);
+    }
+
 
     // TODO: Compute the color of the refracted ray and add its contribution to the current point color.
     //       Make sure to check for total internal reflection before shooting a new ray.
@@ -418,6 +430,7 @@ void raytrace_scene()
         for (unsigned j = 0; j < h; ++j)
         {
             // TODO: Implement depth of field
+
             const Vector3d pixel_center = image_origin + (i + 0.5) * x_displacement + (j + 0.5) * y_displacement;
 
             // Prepare the ray
